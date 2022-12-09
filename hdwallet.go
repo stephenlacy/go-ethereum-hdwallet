@@ -26,8 +26,8 @@ import (
 var DefaultRootDerivationPath = accounts.DefaultRootDerivationPath
 
 // DefaultBaseDerivationPath is the base path from which custom derivation endpoints
-// are incremented. As such, the first account will be at m/44'/60'/0'/0, the second
-// at m/44'/60'/0'/1, etc
+// are incremented. As such, the first account will be at m/44'/60'/0'/0/0, the second
+// at m/44'/60'/0'/0/1, etc
 var DefaultBaseDerivationPath = accounts.DefaultBaseDerivationPath
 
 const issue179FixEnvar = "GO_ETHEREUM_HDWALLET_FIX_ISSUE_179"
@@ -282,7 +282,7 @@ func (w *Wallet) SignTx(account accounts.Account, tx *types.Transaction, chainID
 
 	signer := types.LatestSignerForChainID(chainID)
 
-  // Sign the transaction and verify the sender to avoid hardware fault surprises
+	// Sign the transaction and verify the sender to avoid hardware fault surprises
 	signedTx, err := types.SignTx(tx, signer, privateKey)
 	if err != nil {
 		return nil, err
@@ -506,9 +506,9 @@ func (w *Wallet) derivePrivateKey(path accounts.DerivationPath) (*ecdsa.PrivateK
 	key := w.masterKey
 	for _, n := range path {
 		if w.fixIssue172 && key.IsAffectedByIssue172() {
-			key, err = key.Derive(n)
-		} else {
 			key, err = key.DeriveNonStandard(n)
+		} else {
+			key, err = key.Derive(n)
 		}
 		if err != nil {
 			return nil, err

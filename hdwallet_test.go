@@ -37,15 +37,15 @@ func TestIssue172(t *testing.T) {
 	// Derive the old (wrong way)
 	account, err := getWallet().Derive(path, false)
 
-	if account.Address.Hex() != "0x3943412CBEEEd4b68d73382b136F36b0CB82F481" {
-		t.Error("wrong address")
+	if account.Address.Hex() != "0x98e440675eFF3041D20bECb7fE7e81746A431b6d" {
+		t.Error("wrong address", account.Address.Hex())
 	}
 
 	// Set envar to non-zero length to derive correctly
 	os.Setenv(issue179FixEnvar, "1")
 	account, err = getWallet().Derive(path, false)
-	if account.Address.Hex() != "0x98e440675eFF3041D20bECb7fE7e81746A431b6d" {
-		t.Error("wrong address")
+	if account.Address.Hex() != "0x3943412CBEEEd4b68d73382b136F36b0CB82F481" {
+		t.Error("wrong address", account.Address.Hex())
 	}
 
 	// Reset Envars
@@ -54,8 +54,8 @@ func TestIssue172(t *testing.T) {
 	wallet.SetFixIssue172(true)
 	account, err = wallet.Derive(path, false)
 
-	if account.Address.Hex() != "0x98e440675eFF3041D20bECb7fE7e81746A431b6d" {
-		t.Error("wrong address")
+	if account.Address.Hex() != "0x3943412CBEEEd4b68d73382b136F36b0CB82F481" {
+		t.Error("wrong address", account.Address.Hex())
 	}
 }
 

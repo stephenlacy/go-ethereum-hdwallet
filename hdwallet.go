@@ -30,6 +30,7 @@ var DefaultRootDerivationPath = accounts.DefaultRootDerivationPath
 // at m/44'/60'/0'/0/1, etc
 var DefaultBaseDerivationPath = accounts.DefaultBaseDerivationPath
 
+// https://github.com/btcsuite/btcutil/issues/172
 const issue179FixEnvar = "GO_ETHEREUM_HDWALLET_FIX_ISSUE_179"
 
 // Wallet is the underlying wallet struct.

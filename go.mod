@@ -1,4 +1,4 @@
-module github.com/stevelacy/go-ethereum-hdwallet
+module github.com/stephenlacy/go-ethereum-hdwallet
 
 go 1.19
 

@@ -16,6 +16,15 @@ func main() {
 	flag.StringVar(&hdpath, "path", "", "HD path")
 	flag.Parse()
 
+	// Check for empty values
+	if mnemonic == "" {
+		log.Fatal("Mnemonic phrase is required")
+	}
+
+	if hdpath == "" {
+		log.Fatal("HD path is required")
+	}
+
 	wallet, err := hdwallet.NewFromMnemonic(mnemonic)
 	if err != nil {
 		log.Fatal(err)

@@ -9,6 +9,8 @@ import (
 	"os"
 	"sync"
 
+	"github.com/tyler-smith/go-bip32"
+
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/ethereum/go-ethereum"
@@ -61,7 +63,7 @@ func newWallet(seed []byte) (*Wallet, error) {
 }
 
 // NewFromMnemonic returns a new wallet from a BIP-39 mnemonic.
-func NewFromMnemonic(mnemonic string) (*Wallet, error) {
+func NewFromMnemonic(mnemonic string, passOpt ...string) (*Wallet, error) {
 	if mnemonic == "" {
 		return nil, errors.New("mnemonic is required")
 	}
@@ -70,7 +72,7 @@ func NewFromMnemonic(mnemonic string) (*Wallet, error) {
 		return nil, errors.New("mnemonic is invalid")
 	}
 
-	seed, err := NewSeedFromMnemonic(mnemonic)
+	seed, err := NewSeedFromMnemonic(mnemonic, passOpt...)
 	if err != nil {
 		return nil, err
 	}
@@ -493,36 +495,50 @@ func NewSeed() ([]byte, error) {
 }
 
 // NewSeedFromMnemonic returns a BIP-39 seed based on a BIP-39 mnemonic.
-func NewSeedFromMnemonic(mnemonic string) ([]byte, error) {
+func NewSeedFromMnemonic(mnemonic string, passOpt ...string) ([]byte, error) {
 	if mnemonic == "" {
 		return nil, errors.New("mnemonic is required")
 	}
 
-	return bip39.NewSeedWithErrorChecking(mnemonic, "")
+	password := ""
+	if len(passOpt) > 0 {
+		password = passOpt[0]
+	}
+
+	return bip39.NewSeedWithErrorChecking(mnemonic, password)
 }
 
 // DerivePrivateKey derives the private key of the derivation path.
 func (w *Wallet) derivePrivateKey(path accounts.DerivationPath) (*ecdsa.PrivateKey, error) {
-	var err error
-	key := w.masterKey
-	for _, n := range path {
-		if w.fixIssue172 && key.IsAffectedByIssue172() {
-			key, err = key.DeriveNonStandard(n)
-		} else {
-			key, err = key.Derive(n)
-		}
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	privateKey, err := key.ECPrivKey()
-	privateKeyECDSA := privateKey.ToECDSA()
+	masterKey, err := bip32.NewMasterKey(w.seed)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate master key: %v", err)
 	}
 
-	return privateKeyECDSA, nil
+	childKey := masterKey
+	for _, index := range path {
+		childKey, err = childKey.NewChildKey(index)
+		if err != nil {
+			return nil, fmt.Errorf("failed to derive child key: %v", err)
+		}
+	}
+
+	d := new(big.Int).SetBytes(childKey.Key)
+	curve := crypto.S256()
+	if d.Cmp(big.NewInt(0)) <= 0 || d.Cmp(curve.Params().N) >= 0 {
+		return nil, errors.New("invalid private key value")
+	}
+
+	privateKey := &ecdsa.PrivateKey{
+		D: d,
+		PublicKey: ecdsa.PublicKey{
+			Curve: curve,
+			X:     nil,
+			Y:     nil,
+		},
+	}
+	privateKey.PublicKey.X, privateKey.PublicKey.Y = curve.ScalarBaseMult(d.Bytes())
+	return privateKey, nil
 }
 
 // DerivePublicKey derives the public key of the derivation path.

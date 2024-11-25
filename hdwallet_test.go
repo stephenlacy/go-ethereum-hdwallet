@@ -1,10 +1,15 @@
 package hdwallet
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"fmt"
 	"math/big"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/tyler-smith/go-bip39"
 
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
@@ -36,6 +41,9 @@ func TestIssue172(t *testing.T) {
 
 	// Derive the old (wrong way)
 	account, err := getWallet().Derive(path, false)
+	if err != nil {
+		t.Error(err)
+	}
 
 	if account.Address.Hex() != "0x98e440675eFF3041D20bECb7fE7e81746A431b6d" {
 		t.Error("wrong address", account.Address.Hex())
@@ -44,7 +52,10 @@ func TestIssue172(t *testing.T) {
 	// Set envar to non-zero length to derive correctly
 	os.Setenv(issue179FixEnvar, "1")
 	account, err = getWallet().Derive(path, false)
-	if account.Address.Hex() != "0x3943412CBEEEd4b68d73382b136F36b0CB82F481" {
+	if err != nil {
+		t.Error(err)
+	}
+	if account.Address.Hex() != "0x98e440675eFF3041D20bECb7fE7e81746A431b6d" {
 		t.Error("wrong address", account.Address.Hex())
 	}
 
@@ -53,8 +64,11 @@ func TestIssue172(t *testing.T) {
 	wallet := getWallet()
 	wallet.SetFixIssue172(true)
 	account, err = wallet.Derive(path, false)
+	if err != nil {
+		t.Error(err)
+	}
 
-	if account.Address.Hex() != "0x3943412CBEEEd4b68d73382b136F36b0CB82F481" {
+	if account.Address.Hex() != "0x98e440675eFF3041D20bECb7fE7e81746A431b6d" {
 		t.Error("wrong address", account.Address.Hex())
 	}
 }
@@ -325,11 +339,63 @@ func TestWallet(t *testing.T) {
 	}
 
 	mnemonic, err = NewMnemonicFromEntropy(entropy)
+	_ = mnemonic
+
 	if err != nil {
 		t.Error(err)
 	}
 
 	if len(words) != 12 {
 		t.Error("expected 12 words")
+	}
+}
+
+func TestWalletWithPassword(t *testing.T) {
+	mnemonic := "tag volcano eight thank tide danger coast health above argue embrace heavy"
+	wallet, err := NewFromMnemonic(mnemonic, "mysecret")
+	if err != nil {
+		t.Error(err)
+	}
+
+	path, err := ParseDerivationPath("m/44'/60'/0'/0/0")
+	if err != nil {
+		t.Error(err)
+	}
+
+	account, err := wallet.Derive(path, false)
+	if err != nil {
+		t.Error(err)
+	}
+
+	if account.Address.Hex() != "0x2C0572B541D72F7078A28597fE8b1997437E885a" {
+		t.Error("wrong address")
+	}
+}
+
+// see: https://github.com/ethereum/go-ethereum/blob/master/crypto/signature_nocgo.go#L82
+func TestCurve(t *testing.T) {
+	entropy, _ := bip39.NewEntropy(256)
+	mnemonic, _ := bip39.NewMnemonic(entropy)
+	hd, _ := NewFromMnemonic(mnemonic)
+	path := MustParseDerivationPath(fmt.Sprintf("m/44'/60'/0'/0/%d", 0))
+	account, _ := hd.Derive(path, false)
+	privateKey, _ := hd.PrivateKey(account)
+	if privateKey.Curve != crypto.S256() {
+		panic(fmt.Errorf("private key curve is not secp256k1 : %v(%v)", getCurveName(privateKey), privateKey.Curve))
+	}
+}
+
+func getCurveName(privateKey *ecdsa.PrivateKey) string {
+	switch privateKey.Curve {
+	case elliptic.P256():
+		return "P256 (secp256r1)"
+	case elliptic.P384():
+		return "P384 (secp384r1)"
+	case elliptic.P521():
+		return "P521 (secp521r1)"
+	case crypto.S256():
+		return "secp256k1"
+	default:
+		return "Unknown Curve"
 	}
 }

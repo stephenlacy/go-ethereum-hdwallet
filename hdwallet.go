@@ -61,7 +61,7 @@ func newWallet(seed []byte) (*Wallet, error) {
 }
 
 // NewFromMnemonic returns a new wallet from a BIP-39 mnemonic.
-func NewFromMnemonic(mnemonic string) (*Wallet, error) {
+func NewFromMnemonic(mnemonic string, passOpt ...string) (*Wallet, error) {
 	if mnemonic == "" {
 		return nil, errors.New("mnemonic is required")
 	}
@@ -70,7 +70,7 @@ func NewFromMnemonic(mnemonic string) (*Wallet, error) {
 		return nil, errors.New("mnemonic is invalid")
 	}
 
-	seed, err := NewSeedFromMnemonic(mnemonic)
+	seed, err := NewSeedFromMnemonic(mnemonic, passOpt...)
 	if err != nil {
 		return nil, err
 	}
@@ -493,12 +493,17 @@ func NewSeed() ([]byte, error) {
 }
 
 // NewSeedFromMnemonic returns a BIP-39 seed based on a BIP-39 mnemonic.
-func NewSeedFromMnemonic(mnemonic string) ([]byte, error) {
+func NewSeedFromMnemonic(mnemonic string, passOpt ...string) ([]byte, error) {
 	if mnemonic == "" {
 		return nil, errors.New("mnemonic is required")
 	}
 
-	return bip39.NewSeedWithErrorChecking(mnemonic, "")
+	password := ""
+	if len(passOpt) > 0 {
+		password = passOpt[0]
+	}
+
+	return bip39.NewSeedWithErrorChecking(mnemonic, password)
 }
 
 // DerivePrivateKey derives the private key of the derivation path.
